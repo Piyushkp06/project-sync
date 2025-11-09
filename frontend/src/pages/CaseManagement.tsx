@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Search, Filter, Trash2, Edit, Eye, Plus, FileText } from "lucide-react";
+import { Search, Filter, Trash2, Edit, Eye, Plus, FileText } from "lucide-react";
 import { toast } from "sonner";
 import apiClient from "@/utils/apiClient";
 import { CASE_LIST, CASE_CREATE, CASE_DETAIL, CASE_UPDATE } from "@/utils/constants";
@@ -242,11 +242,6 @@ const CaseManagement = () => {
     });
   };
 
-  // Handle CSV file upload
-  const handleFileUpload = () => {
-    toast.success("CSV upload functionality coming soon");
-  };
-
   const filteredCases = cases.filter((case_) => {
     const matchesSearch =
       case_.caseNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -281,10 +276,6 @@ const CaseManagement = () => {
           <p className="text-gray-600 mt-2">Manage court cases and daily cause lists</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleFileUpload}>
-            <Upload className="w-4 h-4 mr-2" />
-            Upload CSV
-          </Button>
           <Button onClick={openCreateDialog}>
             <Plus className="w-4 h-4 mr-2" />
             Add Case

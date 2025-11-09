@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { SHARED_CASE, getInitialAttendanceStatus } from "@/utils/sharedCaseData";
 import {
   Select,
   SelectContent,
@@ -40,13 +41,33 @@ const GenerateQRCode = () => {
   const fetchTodayHearings = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get("/api/liaison/hearings/today");
-      if (response.data.success && response.data.data) {
-        setTodayHearings(response.data.data);
-      }
+      
+      // Use hardcoded shared case data
+      const attendanceStatus = getInitialAttendanceStatus();
+      const hardcodedHearing: HearingSession = {
+        _id: SHARED_CASE.id,
+        caseId: {
+          caseId: SHARED_CASE.case_number,
+          firNumber: SHARED_CASE.fir_number,
+        },
+        hearingDate: SHARED_CASE.hearing_date,
+        hearingTime: SHARED_CASE.hearing_time,
+        courtName: SHARED_CASE.courtName,
+        qrCode: SHARED_CASE.qrCode,
+        qrCodeData: JSON.stringify({
+          caseId: SHARED_CASE.case_number,
+          hearingDate: SHARED_CASE.hearing_date,
+          code: SHARED_CASE.qrCode,
+          manualCode: SHARED_CASE.manualCode,
+        }),
+        status: "scheduled",
+      };
+      
+      setTodayHearings([hardcodedHearing]);
+      toast.success("Loaded hearing session with QR code");
     } catch (error) {
-      console.error("Error fetching hearings:", error);
-      toast.error("Failed to fetch today's hearings");
+      console.error("Error loading hearings:", error);
+      toast.error("Failed to load hearings");
     } finally {
       setLoading(false);
     }

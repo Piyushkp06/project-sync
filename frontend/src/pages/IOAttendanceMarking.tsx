@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import apiClient from "@/utils/apiClient";
 import { toast } from "sonner";
+import { SHARED_CASE, getInitialAttendanceStatus, updateAttendanceStatus } from "@/utils/sharedCaseData";
 import {
   Table,
   TableBody,
@@ -58,19 +59,19 @@ const IOAttendanceMarking = () => {
   const [markingAttendance, setMarkingAttendance] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Dummy attendance records
+  // Hardcoded attendance records using shared case data
   const [attendanceRecords, setAttendanceRecords] = useState<
     AttendanceRecord[]
   >([
     {
-      id: "ATT001",
-      case_number: "CR/001/2025",
-      case_type: "Theft",
-      hearing_date: "2025-11-12",
-      hearing_time: "10:00 AM",
-      court_room: "Court Room 1",
-      attendance_status: "Pending",
-      liaison_officer: "Amit Mahapatra",
+      id: SHARED_CASE.id,
+      case_number: SHARED_CASE.case_number,
+      case_type: SHARED_CASE.case_type,
+      hearing_date: SHARED_CASE.hearing_date,
+      hearing_time: SHARED_CASE.hearing_time,
+      court_room: SHARED_CASE.court_room,
+      attendance_status: getInitialAttendanceStatus().io,
+      liaison_officer: SHARED_CASE.liaison_officer,
     },
     {
       id: "ATT002",
@@ -96,38 +97,42 @@ const IOAttendanceMarking = () => {
     },
   ]);
 
-  const handleMarkAttendance = async (caseNumber: string, method: "qr" | "manual") => {
+  const handleMarkAttendance = (caseNumber: string, method: "qr" | "manual") => {
     try {
       setMarkingAttendance(true);
-      setSelectedCase(caseNumber);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Hardcoded verification for shared case
+      if (caseNumber === SHARED_CASE.case_number) {
+        // Update attendance status
+        updateAttendanceStatus("io", "Present", method === "qr" ? "QR Code" : "Manual Code");
+        
+        // Update the record
+        setAttendanceRecords((prev) =>
+          prev.map((record) =>
+            record.case_number === caseNumber
+              ? {
+                  ...record,
+                  attendance_status: "Present",
+                  marked_at: new Date().toLocaleString(),
+                  marked_method: method === "qr" ? "QR Code" : "Manual Code",
+                }
+              : record
+          )
+        );
 
-      // Update the record
-      setAttendanceRecords((prev) =>
-        prev.map((record) =>
-          record.case_number === caseNumber
-            ? {
-                ...record,
-                attendance_status: "Present",
-                marked_at: new Date().toLocaleString(),
-                marked_method: method === "qr" ? "QR Code" : "Manual Entry",
-              }
-            : record
-        )
-      );
-
-      toast.success("Attendance marked successfully!");
-      setShowQRScanner(false);
-      setShowManualEntry(false);
-      setManualCode("");
+        toast.success("Attendance marked successfully!");
+        setShowQRScanner(false);
+        setShowManualEntry(false);
+        setManualCode("");
+        setSelectedCase("");
+      } else {
+        toast.error("Invalid case number");
+      }
     } catch (error) {
       console.error("Error marking attendance:", error);
       toast.error("Failed to mark attendance");
     } finally {
       setMarkingAttendance(false);
-      setSelectedCase("");
     }
   };
 
@@ -136,16 +141,31 @@ const IOAttendanceMarking = () => {
       toast.error("Please enter the verification code");
       return;
     }
+    
+    if (!selectedCase) {
+      toast.error("Please select a case");
+      return;
+    }
 
-    // Find matching case by code (simplified)
-    const caseToMark = attendanceRecords.find(
-      (r) => r.attendance_status === "Pending"
-    );
-
-    if (caseToMark) {
-      handleMarkAttendance(caseToMark.case_number, "manual");
+    // Hardcoded verification for shared case
+    if (selectedCase === SHARED_CASE.case_number && manualCode.trim().toUpperCase() === SHARED_CASE.manualCode) {
+      handleMarkAttendance(SHARED_CASE.case_number, "manual");
     } else {
-      toast.error("Invalid code or no pending cases");
+      toast.error("Invalid code or case number");
+    }
+  };
+  
+  const handleQRScan = () => {
+    if (!selectedCase) {
+      toast.error("Please select a case first");
+      return;
+    }
+    
+    // Hardcoded verification for shared case
+    if (selectedCase === SHARED_CASE.case_number) {
+      handleMarkAttendance(SHARED_CASE.case_number, "qr");
+    } else {
+      toast.error("Invalid QR code for selected case");
     }
   };
 
@@ -367,8 +387,8 @@ const IOAttendanceMarking = () => {
                 {selectedCase && (
                   <Button
                     size="lg"
-                    className="mt-4"
-                    onClick={() => handleMarkAttendance(selectedCase, "qr")}
+                    className="mt-4 w-full max-w-md"
+                    onClick={handleQRScan}
                     disabled={markingAttendance}
                   >
                     {markingAttendance ? "Marking..." : "Simulate QR Scan"}
@@ -410,9 +430,24 @@ const IOAttendanceMarking = () => {
                     <Input
                       placeholder="Enter code"
                       value={manualCode}
-                      onChange={(e) => setManualCode(e.target.value)}
+                      onChange={(e) => setManualCode(e.target.value.toUpperCase())}
                       className="text-center text-xl font-mono"
                     />
+                    {/* Helpful info for testing */}
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                      <p className="font-semibold text-blue-900 mb-2">
+                        📝 Testing Information:
+                      </p>
+                      <p className="text-blue-800">
+                        <strong>Case:</strong> {SHARED_CASE.case_number}
+                      </p>
+                      <p className="text-blue-800">
+                        <strong>Manual Code:</strong> {SHARED_CASE.manualCode}
+                      </p>
+                      <p className="text-xs text-blue-600 mt-2">
+                        💡 Select the case above and enter this code to mark attendance
+                      </p>
+                    </div>
                   </div>
 
                   <Button

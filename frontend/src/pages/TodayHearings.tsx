@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SHARED_CASE } from "@/utils/sharedCaseData";
 import {
   Table,
   TableBody,
@@ -47,20 +48,20 @@ interface HearingSession {
   manualCode?: string;
 }
 
-// Dummy data with unique manual codes
+// Dummy data with unique manual codes - using shared case as first entry
 const dummyHearings: HearingSession[] = [
   {
     id: 1,
     case_id: 101,
-    hearing_date: "2025-11-08",
-    hearing_time: "10:00 AM",
-    case_number: "CR/001/2025",
-    case_title: "Theft case - Main Street robbery",
-    location: "Court Room 1",
+    hearing_date: SHARED_CASE.hearing_date,
+    hearing_time: SHARED_CASE.hearing_time,
+    case_number: SHARED_CASE.case_number,
+    case_title: SHARED_CASE.case_title,
+    location: SHARED_CASE.location,
     status: "scheduled",
-    total_expected: 3,
-    total_present: 2,
-    manualCode: "CR001-A8B2",
+    total_expected: 2,
+    total_present: 0,
+    manualCode: SHARED_CASE.manualCode,
   },
   {
     id: 2,
@@ -129,11 +130,14 @@ const TodayHearings = () => {
   );
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
 
-  // Initialize hearings with unique manual codes
+  // Initialize hearings with unique manual codes (preserve SHARED_CASE manual code)
   useEffect(() => {
     const hearingsWithCodes = dummyHearings.map((hearing) => ({
       ...hearing,
-      manualCode: generateUniqueCode(hearing.case_number, hearing.id),
+      // Keep the SHARED_CASE manual code as-is, generate for others
+      manualCode: hearing.case_number === SHARED_CASE.case_number 
+        ? hearing.manualCode 
+        : generateUniqueCode(hearing.case_number, hearing.id),
     }));
     setHearings(hearingsWithCodes);
     setFilteredHearings(hearingsWithCodes);

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import apiClient from "@/utils/apiClient";
 import { ATTENDANCE_REPORT } from "@/utils/constants";
 import { toast } from "sonner";
+import { SHARED_CASE, getInitialAttendanceStatus, updateAttendanceStatus } from "@/utils/sharedCaseData";
 import {
   Table,
   TableBody,
@@ -77,19 +78,19 @@ const WitnessAttendance = () => {
   const [markingAttendance, setMarkingAttendance] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Dummy attendance records
+  // Hardcoded attendance records using shared case data
   const [attendanceRecords, setAttendanceRecords] = useState<
     AttendanceRecord[]
   >([
     {
-      id: "ATT001",
-      case_number: "CR/001/2025",
-      case_type: "Theft",
-      hearing_date: "2025-11-12",
-      hearing_time: "10:00 AM",
-      court_room: "Court Room 1",
-      attendance_status: "Pending",
-      io_name: "IO Suresh Dash",
+      id: SHARED_CASE.id,
+      case_number: SHARED_CASE.case_number,
+      case_type: SHARED_CASE.case_type,
+      hearing_date: SHARED_CASE.hearing_date,
+      hearing_time: SHARED_CASE.hearing_time,
+      court_room: SHARED_CASE.court_room,
+      attendance_status: getInitialAttendanceStatus().witness,
+      io_name: SHARED_CASE.io_name,
     },
     {
       id: "ATT002",
@@ -373,7 +374,7 @@ const WitnessAttendance = () => {
     }
   };
 
-  // Handle manual code submission
+  // Handle manual code submission (hardcoded verification)
   const handleManualCodeSubmit = () => {
     if (!manualCode.trim()) {
       toast.error("Please enter a manual code");
@@ -383,24 +384,66 @@ const WitnessAttendance = () => {
       toast.error("Please select a case");
       return;
     }
-    markSelfAttendance(manualCode.trim(), selectedCase);
+    
+    // Hardcoded verification for shared case
+    if (selectedCase === SHARED_CASE.case_number && manualCode.trim().toUpperCase() === SHARED_CASE.manualCode) {
+      // Update attendance status
+      updateAttendanceStatus("witness", "Present", "Manual Code");
+      
+      // Update local records
+      setAttendanceRecords((prev) =>
+        prev.map((record) =>
+          record.case_number === SHARED_CASE.case_number
+            ? {
+                ...record,
+                attendance_status: "Present",
+                marked_at: new Date().toLocaleString(),
+                marked_method: "Manual Code",
+              }
+            : record
+        )
+      );
+      
+      toast.success(`Attendance marked successfully for ${SHARED_CASE.case_number}!`);
+      setManualCode("");
+      setSelectedCase("");
+      setShowManualEntry(false);
+    } else {
+      toast.error("Invalid code or case number. Please verify and try again.");
+    }
   };
 
-  // Handle QR code scan (placeholder - would integrate with actual QR scanner)
-  const handleQRCodeScan = (scannedCode: string) => {
-    // Parse QR code to extract case information
-    try {
-      const qrData = JSON.parse(scannedCode);
-      if (qrData.caseId && qrData.code) {
-        markSelfAttendance(qrData.code, qrData.caseId);
-      }
-    } catch {
-      // If not JSON, treat as direct code
-      if (selectedCase) {
-        markSelfAttendance(scannedCode, selectedCase);
-      } else {
-        toast.error("Please select a case first");
-      }
+  // Handle QR code scan (hardcoded verification)
+  const handleQRCodeScan = () => {
+    if (!selectedCase) {
+      toast.error("Please select a case first");
+      return;
+    }
+    
+    // Hardcoded verification for shared case
+    if (selectedCase === SHARED_CASE.case_number) {
+      // Update attendance status
+      updateAttendanceStatus("witness", "Present", "QR Code");
+      
+      // Update local records
+      setAttendanceRecords((prev) =>
+        prev.map((record) =>
+          record.case_number === SHARED_CASE.case_number
+            ? {
+                ...record,
+                attendance_status: "Present",
+                marked_at: new Date().toLocaleString(),
+                marked_method: "QR Code",
+              }
+            : record
+        )
+      );
+      
+      toast.success(`Attendance marked successfully via QR Code for ${SHARED_CASE.case_number}!`);
+      setSelectedCase("");
+      setShowQRScanner(false);
+    } else {
+      toast.error("Invalid QR code for selected case");
     }
   };
 
@@ -550,7 +593,7 @@ const WitnessAttendance = () => {
                   Point your camera at the QR code displayed at the court
                 </p>
                 {/* Case Selection for QR Scanner */}
-                <div className="mt-4 max-w-md mx-auto">
+                <div className="mt-4 max-w-md mx-auto space-y-4">
                   <select
                     value={selectedCase}
                     onChange={(e) => setSelectedCase(e.target.value)}
@@ -563,6 +606,16 @@ const WitnessAttendance = () => {
                       </option>
                     ))}
                   </select>
+                  {selectedCase && (
+                    <Button
+                      size="lg"
+                      className="w-full"
+                      onClick={handleQRCodeScan}
+                      disabled={markingAttendance}
+                    >
+                      {markingAttendance ? "Marking..." : "Simulate QR Scan"}
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -608,29 +661,21 @@ const WitnessAttendance = () => {
                       maxLength={15}
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Enter the code displayed below the QR code (format:
-                      CR001-001A8B2)
+                      Enter the code displayed below the QR code
                     </p>
-                    {/* Debug info - remove in production */}
-                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                      <p>
-                        <strong>Debug Info:</strong>
+                    {/* Helpful info for testing */}
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                      <p className="font-semibold text-blue-900 mb-2">
+                        📝 Testing Information:
                       </p>
-                      <p>Selected Case: {selectedCase || "None"}</p>
-                      <p>Manual Code: {manualCode || "None"}</p>
-                      <p>Expected format: CR001-XXXX (4 random chars)</p>
-                      <p>
-                        Test codes: CR001-A8B2, CR005-B9C3, CR009-D4E5,
-                        CR014-F6G7, CR019-H8I9
+                      <p className="text-blue-800">
+                        <strong>Case:</strong> {SHARED_CASE.case_number}
                       </p>
-                      <p className="text-blue-600 font-semibold">
-                        💡 Tip: First create a hearing session in the database
-                        with manual codes, then test here.
+                      <p className="text-blue-800">
+                        <strong>Manual Code:</strong> {SHARED_CASE.manualCode}
                       </p>
-                      <p className="text-red-600 text-xs mt-1">
-                        Note: The attendance marking API is working! The 404
-                        error is expected because no hearing sessions exist in
-                        the database yet.
+                      <p className="text-xs text-blue-600 mt-2">
+                        💡 Select the case above and enter this code to mark attendance
                       </p>
                     </div>
                   </div>
